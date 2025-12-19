@@ -1,0 +1,209 @@
+
+#include <iostream>
+#include <string>
+#include <sys/stat.h>   
+using namespace std;
+
+struct ImageNode {
+    string name;     
+    double size;     
+    string path;     
+    ImageNode* left;
+    ImageNode* right;
+
+    ImageNode(string n, double s, string p) {
+        name = n;
+        size = s;
+        path = p;
+        left = right = nullptr;
+    }
+};
+
+class ImageBST {
+private:
+    ImageNode* root;
+
+    ImageNode* insert(ImageNode* node, string name, double size, string path) {
+        if (node == nullptr)
+            return new ImageNode(name, size, path);
+
+        if (size < node->size)
+            node->left = insert(node->left, name, size, path);
+        else
+            node->right = insert(node->right, name, size, path);
+
+        return node;
+    }
+
+    
+    void inorder(ImageNode* node) {
+        if (!node) return;
+        inorder(node->left);
+        cout<< node->name << " - " << node->size << " KB | Path: " << node->path << endl;
+        inorder(node->right);
+    }
+
+    
+    ImageNode* search(ImageNode* node, string name) {
+        if (!node) return nullptr;
+        if (node->name == name) return node;
+        ImageNode* leftSearch = search(node->left, name);
+        if (leftSearch) return leftSearch;
+        return search(node->right, name);
+    }
+
+    ImageNode* findMin(ImageNode* node) {
+        while (node && node->left)
+            node = node->left;
+        return node;
+    }
+
+   
+
+ImageNode* deleteNode(ImageNode* node, string name) {
+    if (!node) return nullptr;
+
+    if (node->name == name) {
+        
+        if (!node->left && !node->right) {
+            delete node;
+            return nullptr;
+        }
+       
+        else if (!node->left) {
+            ImageNode* temp = node->right;
+            delete node;
+            return temp;
+        }
+        else if (!node->right) {
+            ImageNode* temp = node->left;
+            delete node;
+            return temp;
+        }
+        
+        else {
+            ImageNode* minNode = findMin(node->right);
+            node->name = minNode->name;
+            node->size = minNode->size;
+            node->path = minNode->path;
+            node->right = deleteNode(node->right, minNode->name);
+        }
+    } else {
+       
+        node->left = deleteNode(node->left, name);
+        node->right = deleteNode(node->right, name);
+    }
+
+    return node;
+}
+
+public:
+    ImageBST() { root = nullptr; }
+
+   
+    void addImage(string name, double size, string path) {
+        root = insert(root, name, size, path);
+    }
+
+    
+    void displayImages() {
+        if (!root) {
+            cout << "No images to display.\n";
+            return;
+        }
+        cout << "\nImages ordered by size (smallest to largest):\n";
+        inorder(root);
+    }
+
+    
+    void searchImage(string name) {
+        ImageNode* result = search(root, name);
+        if (result)
+            cout << " Found: " << result->name << " (" << result->size 
+                 << " KB)\nPath: " << result->path << endl;
+        else
+            cout << " Image '" << name << "' not found.\n";
+    }
+
+   
+    void deleteImage(string name) {
+        root = deleteNode(root, name);
+        cout << " Image '" << name << "' deleted (if it existed).\n";
+    }
+};
+
+double getFileSizeKB(const string& path) {
+    struct stat fileStat;
+    if (stat(path.c_str(), &fileStat) == 0) {
+        return fileStat.st_size / 1024.0; 
+    } else {
+        return -1.0; 
+    }
+}
+
+int main() {
+    ImageBST gallery;
+    int choice;
+    string name, path;
+
+    cout << "=== Real-Time Hair Image Management System ===\n";
+    cout << "\n------------ MENU ------------\n";
+        cout << "1. Add new image (with path)\n";
+        cout << "2. View all images (sorted by size)\n";
+        cout << "3. Search image by name\n";
+        cout << "4. Delete image\n";
+        cout << "5. Exit\n";
+        cout << "--------------------------------\n";
+        
+    do {
+    cout << "Enter your choice: ";
+        cin >> choice;
+        cin.ignore();
+
+        switch (choice) {
+            case 1: {
+                cout << "Enter full file path: ";
+                getline(cin, path);
+
+                double sizeKB = getFileSizeKB(path);
+                if (sizeKB < 0) {
+                    cout << " File not found at given path.\n";
+                    break;
+                }
+
+                
+                size_t lastSlash = path.find_last_of("/\\");
+                string fileName = (lastSlash == string::npos) ? path : path.substr(lastSlash + 1);
+                size_t dotPos = fileName.find_last_of(".");
+                if (dotPos != string::npos)
+                    fileName = fileName.substr(0, dotPos);
+
+                gallery.addImage(fileName, sizeKB, path);
+                cout << "Added: " << fileName << " (" << sizeKB << " KB)\n";
+                break;
+            }
+            case 2:
+                gallery.displayImages();
+                break;
+            case 3:
+                cout << "Enter image name to search: ";
+                getline(cin, name);
+                gallery.searchImage(name);
+                break;
+            case 4:
+                cout << "Enter image name to delete: ";
+                getline(cin, name);
+                gallery.deleteImage(name);
+                break;
+            case 5:
+                cout << "Exiting program...\n";
+                break;
+            default:
+                cout << " Invalid choice. Try again.\n";
+        }
+    } while (choice != 5);
+
+    return 0;
+}
+
+
